@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Canvas2D } from "@/components/editor/Canvas2D";
 import { Toolbar } from "@/components/editor/Toolbar";
-import { Preview3D } from "@/components/editor/Preview3D";
+import { Editor3D } from "@/components/editor/Editor3D";
 import { useState, useRef } from "react";
 
 const Editor = () => {
@@ -69,7 +69,7 @@ const Editor = () => {
             {activeTab === '2d' ? (
               <Canvas2D actionsRef={canvasActionsRef} />
             ) : (
-              <Preview3D />
+              <Editor3D />
             )}
           </div>
         </div>

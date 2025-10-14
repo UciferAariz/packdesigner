@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 
-export const Canvas2D = () => {
+interface Canvas2DProps {
+  actionsRef?: React.MutableRefObject<any>;
+}
+
+export const Canvas2D = ({ actionsRef }: Canvas2DProps = {}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [fabricCanvas, setFabricCanvas] = useState<Canvas | null>(null);
   const [selectedColor, setSelectedColor] = useState("#9333ea");
@@ -41,6 +45,19 @@ export const Canvas2D = () => {
     fabricCanvas.setActiveObject(text);
     toast.success("Text added");
   };
+
+  // Expose methods to parent via ref
+  useEffect(() => {
+    if (actionsRef) {
+      actionsRef.current = {
+        addText,
+        addRectangle,
+        addCircle,
+        clear: clearCanvas,
+        export: exportCanvas
+      };
+    }
+  }, [fabricCanvas, selectedColor]);
 
   const addRectangle = () => {
     if (!fabricCanvas) return;
@@ -79,6 +96,20 @@ export const Canvas2D = () => {
     fabricCanvas.backgroundColor = "#ffffff";
     fabricCanvas.renderAll();
     toast.success("Canvas cleared");
+  };
+
+  const exportCanvas = () => {
+    if (!fabricCanvas) return;
+    const dataURL = fabricCanvas.toDataURL({
+      format: 'png',
+      quality: 1,
+      multiplier: 2,
+    });
+    const link = document.createElement('a');
+    link.download = 'label-design.png';
+    link.href = dataURL;
+    link.click();
+    toast.success("Design exported");
   };
 
   const colors = [

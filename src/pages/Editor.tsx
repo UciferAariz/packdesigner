@@ -1,6 +1,5 @@
 import { Navbar } from "@/components/Navbar";
 import { Canvas2D } from "@/components/editor/Canvas2D";
-import { Toolbar } from "@/components/editor/Toolbar";
 import { Preview3D } from "@/components/editor/Preview3D";
 import { useState } from "react";
 
@@ -12,8 +11,6 @@ const Editor = () => {
       <Navbar />
       
       <main className="flex-1 pt-16 flex overflow-hidden">
-        <Toolbar />
-        
         <div className="flex-1 flex flex-col">
           <div className="border-b border-border bg-card px-4 py-2 flex items-center gap-4">
             <button

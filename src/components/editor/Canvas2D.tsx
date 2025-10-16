@@ -1,189 +1,306 @@
+// src/components/editor/Canvas2D.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { Canvas, Rect, Circle as FabricCircle, IText } from "fabric";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { toast } from "sonner";
+import { fabric } from "fabric";
+import { SharedSidebar } from "./SharedSidebar";
+
+interface LayerItem {
+  id: string;
+  name: string;
+  visible: boolean;
+  locked: boolean;
+  objRef: fabric.Object;
+}
 
 interface Canvas2DProps {
   actionsRef?: React.MutableRefObject<any>;
 }
 
 export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<Canvas | null>(null);
-  const [selectedColor, setSelectedColor] = useState("#9333ea");
-  const [zoom, setZoom] = useState(1);
+  const canvasElRef = useRef<HTMLCanvasElement | null>(null);
+  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const [layers, setLayers] = useState<LayerItem[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const c = new Canvas(canvasRef.current, {
-      backgroundColor: "#ffffff",
-      selection: true,
+    const c = new fabric.Canvas(canvasElRef.current!, {
+      backgroundColor: "#fff",
       preserveObjectStacking: true,
+      width: 1000,
+      height: 700,
     });
-    setFabricCanvas(c);
+    fabricRef.current = c;
 
-    // Add default grid or helper
-    c.setWidth(800);
-    c.setHeight(600);
+    // selection change -> update selectedId
+    c.on("selection:created", updateLayerSelection);
+    c.on("selection:updated", updateLayerSelection);
+    c.on("selection:cleared", () => setSelectedId(null));
+    c.on("object:added", handleObjectAdded);
+    c.on("object:removed", handleObjectRemoved);
 
     // expose actions
     if (actionsRef) {
       actionsRef.current = {
-        addRect: () => addRectangle(),
-        addCircle: () => addCircle(),
-        addText: () => addText(),
-        clear: () => clearCanvas(),
-        export: () => exportCanvas(),
+        addRect: addRect,
+        addCircle: addCircle,
+        addText: addText,
+        clear: clearCanvas,
+        export: exportCanvas,
+        bringForward: bringForward,
+        sendBackward: sendBackward,
+        bringToFront: bringToFront,
+        sendToBack: sendToBack,
       };
     }
 
     return () => {
       c.dispose();
+      fabricRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addRectangle = () => {
-    if (!fabricCanvas) return;
-    const rect = new Rect({
-      left: 50,
-      top: 50,
-      width: 140,
-      height: 100,
-      fill: selectedColor,
+  // layer helpers
+  function syncLayers() {
+    const c = fabricRef.current!;
+    const objs = c.getObjects();
+    // Fabric object's stacking order: bottom (index 0) -> top (last)
+    const list = objs
+      .slice()
+      .reverse() // reverse so top-most appears first in UI
+      .map((o) => ({
+        id: (o as any).uid || (o as any).__uid || (o as any).toObject().id || String((o as any).__uuid || Math.random()),
+        name: (o as any).name || ((o as any).type ? (o as any).type : "Object"),
+        visible: !(o as any).visible === false ? true : (o as any).visible !== false,
+        locked: !!(o as any).selectable === false,
+        objRef: o,
+      }));
+    // ensure each object has a stable id
+    list.forEach((li) => {
+      if (!(li.objRef as any).uid) (li.objRef as any).uid = li.id;
+    });
+
+    setLayers(list);
+  }
+
+  function handleObjectAdded(e: any) {
+    const o = e.target as fabric.Object;
+    // ensure stable id
+    if (!(o as any).uid) (o as any).uid = `o_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    // name default
+    if (!(o as any).name) (o as any).name = o.type || "object";
+    syncLayers();
+  }
+
+  function handleObjectRemoved() {
+    syncLayers();
+  }
+
+  function updateLayerSelection(e: any) {
+    const active = fabricRef.current!.getActiveObject();
+    if (!active) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((active as any).uid || null);
+  }
+
+  // create primitives
+  const addRect = () => {
+    const c = fabricRef.current!;
+    const rect = new fabric.Rect({
+      left: 60,
+      top: 60,
+      width: 180,
+      height: 110,
+      fill: "#F97316",
       stroke: "#333",
       strokeWidth: 1,
     });
-    fabricCanvas.add(rect);
-    fabricCanvas.setActiveObject(rect);
-    fabricCanvas.requestRenderAll();
+    rect.set("name", "Rectangle");
+    c.add(rect);
+    c.setActiveObject(rect);
+    c.requestRenderAll();
   };
 
   const addCircle = () => {
-    if (!fabricCanvas) return;
-    const circle = new FabricCircle({
-      left: 100,
-      top: 100,
-      radius: 50,
-      fill: selectedColor,
-      stroke: "#333",
-      strokeWidth: 1,
+    const c = fabricRef.current!;
+    const circle = new fabric.Circle({
+      left: 160,
+      top: 160,
+      radius: 60,
+      fill: "#10B981",
     });
-    fabricCanvas.add(circle);
-    fabricCanvas.setActiveObject(circle);
-    fabricCanvas.requestRenderAll();
+    circle.set("name", "Circle");
+    c.add(circle);
+    c.setActiveObject(circle);
+    c.requestRenderAll();
   };
 
   const addText = () => {
-    if (!fabricCanvas) return;
-    const t = new IText("Text", {
-      left: 120,
-      top: 120,
-      fontSize: 24,
-      fill: selectedColor,
+    const c = fabricRef.current!;
+    const it = new fabric.IText("Text", {
+      left: 240,
+      top: 240,
+      fontSize: 28,
+      fill: "#111827",
     });
-    fabricCanvas.add(t);
-    fabricCanvas.setActiveObject(t);
-    fabricCanvas.requestRenderAll();
-    t.enterEditing();
+    it.set("name", "Text");
+    c.add(it);
+    c.setActiveObject(it);
+    c.requestRenderAll();
+    it.enterEditing();
   };
 
+  // layer operations
+  function selectLayerItem(item: LayerItem) {
+    fabricRef.current!.setActiveObject(item.objRef);
+    fabricRef.current!.requestRenderAll();
+    setSelectedId(item.id);
+  }
+
+  function toggleVisibility(item: LayerItem) {
+    item.objRef.visible = !item.objRef.visible;
+    item.objRef.set("visible", item.objRef.visible);
+    fabricRef.current!.requestRenderAll();
+    syncLayers();
+  }
+
+  function toggleLock(item: LayerItem) {
+    const locked = !(item.objRef.selectable ?? true);
+    item.objRef.set({
+      selectable: locked ? true : false,
+      evented: locked ? true : false,
+    });
+    // flip selectable
+    item.objRef.set("selectable", !item.objRef.selectable);
+    fabricRef.current!.requestRenderAll();
+    syncLayers();
+  }
+
+  function renameLayer(item: LayerItem, newName: string) {
+    item.objRef.set("name", newName);
+    syncLayers();
+  }
+
+  function deleteLayer(item: LayerItem) {
+    fabricRef.current!.remove(item.objRef);
+    fabricRef.current!.requestRenderAll();
+    syncLayers();
+  }
+
+  // reordering helpers
+  function bringForward() {
+    const active = fabricRef.current!.getActiveObject();
+    if (!active) return;
+    fabricRef.current!.bringForward(active);
+    fabricRef.current!.renderAll();
+    syncLayers();
+  }
+  function sendBackward() {
+    const active = fabricRef.current!.getActiveObject();
+    if (!active) return;
+    fabricRef.current!.sendBackwards(active);
+    fabricRef.current!.renderAll();
+    syncLayers();
+  }
+  function bringToFront() {
+    const active = fabricRef.current!.getActiveObject();
+    if (!active) return;
+    fabricRef.current!.bringToFront(active);
+    fabricRef.current!.renderAll();
+    syncLayers();
+  }
+  function sendToBack() {
+    const active = fabricRef.current!.getActiveObject();
+    if (!active) return;
+    fabricRef.current!.sendToBack(active);
+    fabricRef.current!.renderAll();
+    syncLayers();
+  }
+
   const clearCanvas = () => {
-    if (!fabricCanvas) return;
-    fabricCanvas.clear();
-    fabricCanvas.backgroundColor = "#ffffff";
-    fabricCanvas.requestRenderAll();
-    toast.success("Canvas cleared");
+    fabricRef.current!.clear();
+    fabricRef.current!.setBackgroundColor("#fff", () => {
+      fabricRef.current!.renderAll();
+    });
+    setLayers([]);
   };
 
   const exportCanvas = () => {
-    if (!fabricCanvas) return;
-    const dataUrl = fabricCanvas.toDataURL({
-      format: "png",
-      multiplier: 2,
-    });
-    const link = document.createElement("a");
-    link.download = "canvas-export.png";
-    link.href = dataUrl;
-    link.click();
-    toast.success("Canvas exported");
+    const url = fabricRef.current!.toDataURL({ format: "png", multiplier: 2 });
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "canvas.png";
+    a.click();
   };
 
-  const handleColorChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedColor(ev.target.value);
-    const active = fabricCanvas?.getActiveObject();
-    if (active && (active as any).set) {
-      // try to set fill for active object
-      (active as any).set("fill", ev.target.value);
-      fabricCanvas?.requestRenderAll();
-    }
-  };
-
-  const handleZoom = (value: number) => {
-    setZoom(value);
-    if (!fabricCanvas) return;
-    fabricCanvas.setZoom(value);
-    fabricCanvas.requestRenderAll();
-  };
+  // initial sync when user triggers
+  useEffect(() => {
+    syncLayers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div className="w-80 border-r border-border bg-card p-4 flex flex-col gap-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Button onClick={addText} variant="outline" size="sm">
-            Add Text
-          </Button>
-          <Button onClick={addRectangle} variant="outline" size="sm">
-            Box
-          </Button>
-          <Button onClick={addCircle} variant="outline" size="sm">
-            Circle
-          </Button>
-        </div>
+    <div className="flex h-full">
+      <SharedSidebar title="2D Layers & Tools" collapsed={collapsed} onToggle={() => setCollapsed((s) => !s)}>
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <button onClick={addText} className="btn">Text</button>
+            <button onClick={addRect} className="btn">Box</button>
+            <button onClick={addCircle} className="btn">Circle</button>
+          </div>
 
-        <div>
-          <label className="text-sm font-medium mb-1 block">Color</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={selectedColor}
-              onChange={handleColorChange}
-              className="w-10 h-8 p-0 border rounded"
-            />
-            <input
-              type="text"
-              value={selectedColor}
-              onChange={(e) => handleColorChange({ ...e } as any)}
-              className="flex-1 input"
-            />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold">Layers</h3>
+              <div className="flex gap-1">
+                <button className="btn" onClick={bringToFront}>Top</button>
+                <button className="btn" onClick={bringForward}>Up</button>
+                <button className="btn" onClick={sendBackward}>Down</button>
+                <button className="btn" onClick={sendToBack}>Bottom</button>
+              </div>
+            </div>
+
+            <div className="max-h-56 overflow-auto border rounded p-2 bg-muted/30">
+              {layers.length === 0 && <div className="text-xs text-muted">No objects</div>}
+
+              {layers.map((L) => (
+                <div key={L.id} className={`flex items-center gap-2 p-1 mb-1 ${selectedId === L.id ? 'bg-muted/60' : ''}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div onClick={() => selectLayerItem(L)} className="truncate cursor-pointer">
+                        <strong className="text-sm">{L.name}</strong>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button className="btn-xs" onClick={() => toggleVisibility(L)}>{L.objRef.visible ? "👁" : "🚫"}</button>
+                        <button className="btn-xs" onClick={() => toggleLock(L)}>{(L.objRef.selectable ?? true) ? "🔓" : "🔒"}</button>
+                        <button className="btn-xs text-red-500" onClick={() => deleteLayer(L)}>✕</button>
+                      </div>
+                    </div>
+                    <input
+                      className="w-full text-xs mt-1 border rounded px-1"
+                      defaultValue={L.name}
+                      onBlur={(e) => renameLayer(L, e.target.value)}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t">
+            <div className="flex gap-2">
+              <button className="btn w-full" onClick={clearCanvas}>Clear</button>
+              <button className="btn w-full" onClick={exportCanvas}>Export</button>
+            </div>
           </div>
         </div>
+      </SharedSidebar>
 
-        <div>
-          <label className="text-sm font-medium mb-1 block">Zoom</label>
-          <Slider
-            value={[zoom]}
-            min={0.25}
-            max={2}
-            step={0.05}
-            onValueChange={(v) => handleZoom(v[0])}
-          />
-        </div>
-
-        <div className="pt-4 border-t border-border">
-          <Button onClick={clearCanvas} variant="outline" className="w-full">
-            Clear Canvas
-          </Button>
-          <Button onClick={exportCanvas} className="w-full mt-2">
-            Export PNG
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 mt-2">
-        <canvas ref={canvasRef} />
+      {/* canvas area */}
+      <div className="flex-1 p-3">
+        <canvas ref={canvasElRef} style={{ width: "100%", height: "100%" }} />
       </div>
     </div>
   );

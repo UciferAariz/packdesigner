@@ -93,10 +93,8 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
   const clearCanvas = () => {
     if (!fabricCanvas) return;
     fabricCanvas.clear();
-    // keep background white (or whatever)
-    fabricCanvas.setBackgroundColor("#ffffff", () => {
-      fabricCanvas.requestRenderAll();
-    });
+    fabricCanvas.backgroundColor = "#ffffff";
+    fabricCanvas.requestRenderAll();
     toast.success("Canvas cleared");
   };
 
@@ -166,11 +164,11 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
         <div>
           <label className="text-sm font-medium mb-1 block">Zoom</label>
           <Slider
-            value={zoom}
+            value={[zoom]}
             min={0.25}
             max={2}
             step={0.05}
-            onValueChange={(v: number) => handleZoom(v)}
+            onValueChange={(v) => handleZoom(v[0])}
           />
         </div>
 

@@ -14,7 +14,7 @@ interface Sidebar3DProps {
   onModelUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onTextureUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   lightIntensity: number;
-  onLightingChange: (intensity: number) => void;
+  onLightingChange: (value: number[]) => void;
   onResetCamera: () => void;
   onExport: () => void;
   loading?: boolean;
@@ -92,21 +92,21 @@ export const Sidebar3D: React.FC<Sidebar3DProps> = ({
               <span className="text-xs w-12">Intensity</span>
               <div className="flex-1">
                 <Slider
-                  value={lightIntensity}
+                  value={[lightIntensity]}
                   min={0}
                   max={2}
                   step={0.01}
-                  onValueChange={(v: number) => onLightingChange(v)}
+                  onValueChange={onLightingChange}
                 />
               </div>
               <span className="text-sm w-10 text-right">{lightIntensity.toFixed(2)}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onClick={() => onLightingChange(0.5)}>
+              <Button variant="outline" size="sm" onClick={() => onLightingChange([0.5])}>
                 Dim
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onLightingChange(1)}>
+              <Button variant="outline" size="sm" onClick={() => onLightingChange([1])}>
                 Normal
               </Button>
             </div>

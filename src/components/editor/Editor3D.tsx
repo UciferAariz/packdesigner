@@ -29,42 +29,58 @@ const Editor3D: React.FC = () => {
     if (!mount) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf7f7f7);
+    scene.background = new THREE.Color(0xc4c4c4);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(45, mount.clientWidth / mount.clientHeight, 0.1, 1000);
-    camera.position.set(0, 1.2, 3);
+    camera.position.set(3, 2.5, 5);
     cameraRef.current = camera;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(mount.clientWidth, mount.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
     mount.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 0.8, 0);
+    controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
     controls.update();
     controlsRef.current = controls;
 
-    // lighting
-    const hem = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-    hem.position.set(0, 2, 0);
-    scene.add(hem);
+    // Enhanced lighting for clean white look
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
 
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-    dir.position.set(2, 4, 2);
-    scene.add(dir);
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    mainLight.position.set(5, 10, 7);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    mainLight.shadow.camera.near = 0.5;
+    mainLight.shadow.camera.far = 50;
+    scene.add(mainLight);
 
-    // optional ground helper
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    fillLight.position.set(-5, 5, -5);
+    scene.add(fillLight);
+
+    // Grid floor
+    const gridHelper = new THREE.GridHelper(20, 20, 0x999999, 0xcccccc);
+    gridHelper.position.y = 0;
+    scene.add(gridHelper);
+
+    // Ground plane for shadows
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(20, 20),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1 })
+      new THREE.PlaneGeometry(50, 50),
+      new THREE.ShadowMaterial({ opacity: 0.15 })
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
     ground.receiveShadow = true;
-    ground.visible = false;
     scene.add(ground);
 
     // handle resize
@@ -127,6 +143,13 @@ const Editor3D: React.FC = () => {
           }
 
           const root = gltf.scene;
+          // Enable shadows for loaded models
+          root.traverse((child: any) => {
+            if (child.isMesh) {
+              child.castShadow = true;
+              child.receiveShadow = true;
+            }
+          });
           centerAndScale(root);
           root.name = name;
           sceneRef.current!.add(root);
@@ -144,10 +167,16 @@ const Editor3D: React.FC = () => {
     const group = new THREE.Group();
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.05, roughness: 0.6 });
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.6, 32), bodyMat);
+    body.castShadow = true;
+    body.receiveShadow = true;
     const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.5, 16), bodyMat);
     neck.position.y = 1.05;
+    neck.castShadow = true;
+    neck.receiveShadow = true;
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x111111 }));
     cap.position.y = 1.32;
+    cap.castShadow = true;
+    cap.receiveShadow = true;
     group.add(body, neck, cap);
     return group;
   }

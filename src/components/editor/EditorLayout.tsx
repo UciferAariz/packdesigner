@@ -226,19 +226,37 @@ export const EditorLayout = () => {
         </div>
 
         {/* Right Toolbar */}
-        <div className="w-16 bg-[#1f1f1f] border-l border-[#3a3a3a] flex flex-col items-center py-4 gap-4">
-          <button className="w-10 h-10 rounded-lg bg-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#3a3a3a] transition-colors flex items-center justify-center">
+        <div className="w-20 bg-[#2d2d2d] border-l border-[#3a3a3a] flex flex-col items-center py-6 gap-3">
+          <button 
+            className="w-12 h-12 rounded-lg bg-[#3a3a3a] text-gray-300 hover:text-white hover:bg-[#4a4a4a] transition-all flex items-center justify-center text-xl"
+            title="Undo"
+          >
             ↶
           </button>
-          <button className="w-10 h-10 rounded-lg bg-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#3a3a3a] transition-colors flex items-center justify-center">
+          <button 
+            className="w-12 h-12 rounded-lg bg-[#3a3a3a] text-gray-300 hover:text-white hover:bg-[#4a4a4a] transition-all flex items-center justify-center text-xl"
+            title="Redo"
+          >
             ↷
           </button>
-          <div className="w-full h-px bg-[#3a3a3a] my-2" />
-          <button className="w-10 h-10 rounded-lg bg-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#3a3a3a] transition-colors flex items-center justify-center">
-            +
+          <div className="w-10 h-px bg-[#3a3a3a] my-2" />
+          <button 
+            className="w-12 h-12 rounded-lg bg-[#3a3a3a] text-gray-300 hover:text-white hover:bg-[#4a4a4a] transition-all flex items-center justify-center"
+            title="Focus Camera"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" strokeWidth="2"/>
+              <path d="M3 12h3m12 0h3M12 3v3m0 12v3" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </button>
-          <button className="w-10 h-10 rounded-lg bg-[#2a2a2a] text-gray-400 hover:text-white hover:bg-[#3a3a3a] transition-colors flex items-center justify-center">
-            −
+          <button 
+            className="w-12 h-12 rounded-lg bg-[#3a3a3a] text-gray-300 hover:text-white hover:bg-[#4a4a4a] transition-all flex items-center justify-center"
+            title="Frame All"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" strokeWidth="2" rx="2"/>
+              <path d="M9 3v18M15 3v18M3 9h18M3 15h18" strokeWidth="2"/>
+            </svg>
           </button>
         </div>
       </div>

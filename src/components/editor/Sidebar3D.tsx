@@ -1,146 +1,156 @@
-import React, { useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import {
-  Upload,
-  Image as ImageIcon,
-  Lightbulb,
-  RotateCcw,
-  Download,
-  Layers,
-} from "lucide-react";
+// src/components/editor/Sidebar3D.tsx
+import React, { useRef, useState } from "react";
+import { SharedSidebar } from "./SharedSidebar";
+import { createClient } from "@supabase/supabase-js"; // for example usage
 
-interface Sidebar3DProps {
-  onModelUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onTextureUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  lightIntensity: number;
-  onLightingChange: (value: number[]) => void;
-  onResetCamera: () => void;
-  onExport: () => void;
+// Replace with your real Supabase keys via env
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON || "";
+const supabaseClient = SUPABASE_URL && SUPABASE_ANON ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
+
+type Sidebar3DProps = {
+  onModelUpload: (file: File) => Promise<void>;
+  onApplyPreset: (presetName: string) => void;
+  onTextureUpload: (file: File) => Promise<void>;
+  onApplyTextureTransform?: (params: { scale: number; rotation: number; offsetX: number; offsetY: number }) => void;
+  onDeleteTexture?: (textureId?: string) => Promise<void>;
   loading?: boolean;
-}
+};
 
 export const Sidebar3D: React.FC<Sidebar3DProps> = ({
   onModelUpload,
+  onApplyPreset,
   onTextureUpload,
-  lightIntensity,
-  onLightingChange,
-  onResetCamera,
-  onExport,
+  onApplyTextureTransform,
+  onDeleteTexture,
   loading = false,
 }) => {
   const modelInputRef = useRef<HTMLInputElement | null>(null);
   const textureInputRef = useRef<HTMLInputElement | null>(null);
+  const [scale, setScale] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [offsetX, setOffsetX] = useState(0);
+  const [offsetY, setOffsetY] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  const presetList = [
+    { key: "dropper", label: "Dropper Bottle", glb: "/models/presets/dropper.glb" },
+    { key: "cosmetic1", label: "Cylindrical Cosmetic", glb: "/models/presets/cosmetic1.glb" },
+    { key: "cosmetic2", label: "Wide Jar", glb: "/models/presets/jar.glb" },
+    { key: "spray", label: "Spray Bottle", glb: "/models/presets/spray.glb" },
+    { key: "serum", label: "Serum Bottle", glb: "/models/presets/serum.glb" },
+  ];
+
+  async function handleModelFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    await onModelUpload(f);
+  }
+
+  async function handleTextureFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    await onTextureUpload(f);
+  }
+
+  function applyTransform() {
+    onApplyTextureTransform?.({ scale, rotation, offsetX, offsetY });
+  }
+
+  async function saveTextureToSupabase(file: File) {
+    if (!supabaseClient) throw new Error("Supabase not configured");
+    setSaving(true);
+    try {
+      const key = `textures/${Date.now()}_${file.name}`;
+      const { data, error } = await supabaseClient.storage.from("textures").upload(key, file, {
+        cacheControl: "3600",
+        upsert: false,
+      });
+      if (error) throw error;
+      // optionally save metadata to a table
+      // await supabaseClient.from('textures_meta').insert({ path: data.path, name: file.name, created_at: new Date() })
+      setSaving(false);
+      alert("Saved to Supabase as: " + data.path);
+    } catch (err: any) {
+      setSaving(false);
+      console.error(err);
+      alert("Failed to save texture: " + (err.message || err));
+    }
+  }
+
+  async function handleDeleteTexture(textureId?: string) {
+    if (!onDeleteTexture) return;
+    await onDeleteTexture(textureId);
+  }
 
   return (
-    <aside className="w-72 border-r border-border bg-card p-4 overflow-auto">
+    <SharedSidebar title="3D Editor" collapsed={false}>
       <div className="space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <Upload className="w-4 h-4" /> Model & Textures
-          </h3>
+        <section>
+          <h3 className="text-xs font-semibold mb-2">Model Presets</h3>
+          <div className="grid grid-cols-1 gap-2">
+            {presetList.map((p) => (
+              <button
+                key={p.key}
+                className="btn w-full text-left"
+                onClick={() => onApplyPreset(p.key)}
+              >
+                {p.label}
+              </button>
+            ))}
+            <div className="text-xs text-muted mt-1">
+              Place preset GLBs under <code>public/models/presets/</code> as the names above or update their paths.
+            </div>
+          </div>
+        </section>
 
-          <div className="flex flex-col gap-2">
-            <input
-              ref={modelInputRef}
-              type="file"
-              accept=".glb,.gltf"
-              onChange={onModelUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => modelInputRef.current?.click()}
-              className="justify-start"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Model (.glb / .gltf)
-            </Button>
+        <section>
+          <h3 className="text-xs font-semibold mb-2">Model & Texture</h3>
+          <input ref={modelInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleModelFilePick} />
+          <button className="btn w-full" onClick={() => modelInputRef.current?.click()}>
+            Upload Model (.glb/.gltf)
+          </button>
 
-            <input
-              ref={textureInputRef}
-              type="file"
-              accept="image/*"
-              onChange={onTextureUpload}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => textureInputRef.current?.click()}
-              className="justify-start"
-            >
-              <ImageIcon className="w-4 h-4 mr-2" />
+          <input ref={textureInputRef} type="file" accept="image/*" className="hidden" onChange={handleTextureFilePick} />
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button className="btn" onClick={() => textureInputRef.current?.click()}>
               Upload Texture
-            </Button>
-
-            <p className="text-xs text-muted-foreground mt-1">
-              Tip: upload .glb/.gltf. Textures should be PNG/JPEG.
-            </p>
+            </button>
+            <button className="btn" onClick={() => {
+              // trigger delete
+              if (confirm("Delete current texture?")) handleDeleteTexture();
+            }}>
+              Delete Texture
+            </button>
           </div>
-        </div>
 
-        <div>
-          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <Lightbulb className="w-4 h-4" />
-            Lighting
-          </h3>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <span className="text-xs w-12">Intensity</span>
-              <div className="flex-1">
-                <Slider
-                  value={[lightIntensity]}
-                  min={0}
-                  max={2}
-                  step={0.01}
-                  onValueChange={onLightingChange}
-                />
-              </div>
-              <span className="text-sm w-10 text-right">{lightIntensity.toFixed(2)}</span>
+          <div className="mt-2">
+            <div className="text-xs mb-1">Texture Transform</div>
+            <label className="text-xs">Scale</label>
+            <input type="range" min={0.1} max={4} step={0.05} value={scale} onChange={(e)=>setScale(Number(e.target.value))} />
+            <div className="flex gap-2 items-center">
+              <label className="text-xs">Rotation</label>
+              <input type="number" value={rotation} onChange={(e)=>setRotation(Number(e.target.value))} className="input w-20" />
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" onClick={() => onLightingChange([0.5])}>
-                Dim
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => onLightingChange([1])}>
-                Normal
-              </Button>
+            <div className="flex gap-2">
+              <input type="number" value={offsetX} onChange={(e)=>setOffsetX(Number(e.target.value))} className="input w-full" placeholder="Offset X" />
+              <input type="number" value={offsetY} onChange={(e)=>setOffsetY(Number(e.target.value))} className="input w-full" placeholder="Offset Y" />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button className="btn" onClick={applyTransform}>Apply</button>
+              <button className="btn" onClick={() => {
+                // save last uploaded texture to Supabase - will ask user to pick file again
+                const el = textureInputRef.current;
+                if (el?.files?.length) saveTextureToSupabase(el.files[0]);
+                else alert("Please upload a texture first to save it.");
+              }}>
+                {saving ? "Saving..." : "Save to Supabase"}
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div>
-          <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
-            <Layers className="w-4 h-4" />
-            Utilities
-          </h3>
-
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-start"
-              onClick={onResetCamera}
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reset Camera
-            </Button>
-
-            <Button
-              className="w-full justify-start bg-primary hover:bg-primary/90"
-              onClick={onExport}
-              disabled={loading}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              {loading ? "Exporting..." : "Export Render"}
-            </Button>
-          </div>
-        </div>
       </div>
-    </aside>
+    </SharedSidebar>
   );
 };

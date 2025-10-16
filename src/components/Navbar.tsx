@@ -28,12 +28,16 @@ export const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" className="hidden md:flex">
-            Sign In
-          </Button>
-          <Button size="sm" className="bg-gradient-primary hover:shadow-elegant transition-all">
-            Get Started
-          </Button>
+          <Link to="/auth">
+            <Button variant="ghost" size="sm" className="hidden md:flex">
+              Sign In
+            </Button>
+          </Link>
+          <Link to="/auth">
+            <Button size="sm" className="bg-gradient-primary hover:shadow-elegant transition-all">
+              Get Started
+            </Button>
+          </Link>
         </div>
       </div>
     </nav>

@@ -1,12 +1,7 @@
 // src/components/editor/Sidebar3D.tsx
 import React, { useRef, useState } from "react";
 import { SharedSidebar } from "./SharedSidebar";
-import { createClient } from "@supabase/supabase-js"; // for example usage
-
-// Replace with your real Supabase keys via env
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON || "";
-const supabaseClient = SUPABASE_URL && SUPABASE_ANON ? createClient(SUPABASE_URL, SUPABASE_ANON) : null;
+import { supabase } from "@/integrations/supabase/client";
 
 type Sidebar3DProps = {
   onModelUpload: (file: File) => Promise<void>;
@@ -58,17 +53,17 @@ export const Sidebar3D: React.FC<Sidebar3DProps> = ({
   }
 
   async function saveTextureToSupabase(file: File) {
-    if (!supabaseClient) throw new Error("Supabase not configured");
+    if (!supabase) throw new Error("Supabase not configured");
     setSaving(true);
     try {
       const key = `textures/${Date.now()}_${file.name}`;
-      const { data, error } = await supabaseClient.storage.from("textures").upload(key, file, {
+      const { data, error } = await supabase.storage.from("textures").upload(key, file, {
         cacheControl: "3600",
         upsert: false,
       });
       if (error) throw error;
       // optionally save metadata to a table
-      // await supabaseClient.from('textures_meta').insert({ path: data.path, name: file.name, created_at: new Date() })
+      // await supabase.from('textures_meta').insert({ path: data.path, name: file.name, created_at: new Date() })
       setSaving(false);
       alert("Saved to Supabase as: " + data.path);
     } catch (err: any) {

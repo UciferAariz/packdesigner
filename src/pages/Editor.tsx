@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/Navbar";
 import { Canvas2D } from "@/components/editor/Canvas2D";
 import { Toolbar } from "@/components/editor/Toolbar";
-import { Editor3D } from "@/components/editor/Editor3D";
+import Editor3D from "@/components/editor/Editor3D";
 import { useState, useRef } from "react";
 
 const Editor = () => {

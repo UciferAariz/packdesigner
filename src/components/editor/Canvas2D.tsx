@@ -1,6 +1,6 @@
 // src/components/editor/Canvas2D.tsx
 import React, { useEffect, useRef, useState } from "react";
-import { fabric } from "fabric";
+import { Canvas as FabricCanvas, Rect, Circle, IText, FabricObject } from "fabric";
 import { SharedSidebar } from "./SharedSidebar";
 
 interface LayerItem {
@@ -8,7 +8,7 @@ interface LayerItem {
   name: string;
   visible: boolean;
   locked: boolean;
-  objRef: fabric.Object;
+  objRef: FabricObject;
 }
 
 interface Canvas2DProps {
@@ -17,13 +17,13 @@ interface Canvas2DProps {
 
 export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
-  const fabricRef = useRef<fabric.Canvas | null>(null);
+  const fabricRef = useRef<FabricCanvas | null>(null);
   const [layers, setLayers] = useState<LayerItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    const c = new fabric.Canvas(canvasElRef.current!, {
+    const c = new FabricCanvas(canvasElRef.current!, {
       backgroundColor: "#fff",
       preserveObjectStacking: true,
       width: 1000,
@@ -84,7 +84,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
   }
 
   function handleObjectAdded(e: any) {
-    const o = e.target as fabric.Object;
+    const o = e.target as FabricObject;
     // ensure stable id
     if (!(o as any).uid) (o as any).uid = `o_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     // name default
@@ -108,7 +108,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
   // create primitives
   const addRect = () => {
     const c = fabricRef.current!;
-    const rect = new fabric.Rect({
+    const rect = new Rect({
       left: 60,
       top: 60,
       width: 180,
@@ -125,7 +125,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
 
   const addCircle = () => {
     const c = fabricRef.current!;
-    const circle = new fabric.Circle({
+    const circle = new Circle({
       left: 160,
       top: 160,
       radius: 60,
@@ -139,7 +139,7 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
 
   const addText = () => {
     const c = fabricRef.current!;
-    const it = new fabric.IText("Text", {
+    const it = new IText("Text", {
       left: 240,
       top: 240,
       fontSize: 28,
@@ -193,37 +193,36 @@ export const Canvas2D: React.FC<Canvas2DProps> = ({ actionsRef } = {}) => {
   function bringForward() {
     const active = fabricRef.current!.getActiveObject();
     if (!active) return;
-    fabricRef.current!.bringForward(active);
+    fabricRef.current!.bringObjectForward(active);
     fabricRef.current!.renderAll();
     syncLayers();
   }
   function sendBackward() {
     const active = fabricRef.current!.getActiveObject();
     if (!active) return;
-    fabricRef.current!.sendBackwards(active);
+    fabricRef.current!.sendObjectBackwards(active);
     fabricRef.current!.renderAll();
     syncLayers();
   }
   function bringToFront() {
     const active = fabricRef.current!.getActiveObject();
     if (!active) return;
-    fabricRef.current!.bringToFront(active);
+    fabricRef.current!.bringObjectToFront(active);
     fabricRef.current!.renderAll();
     syncLayers();
   }
   function sendToBack() {
     const active = fabricRef.current!.getActiveObject();
     if (!active) return;
-    fabricRef.current!.sendToBack(active);
+    fabricRef.current!.sendObjectToBack(active);
     fabricRef.current!.renderAll();
     syncLayers();
   }
 
   const clearCanvas = () => {
     fabricRef.current!.clear();
-    fabricRef.current!.setBackgroundColor("#fff", () => {
-      fabricRef.current!.renderAll();
-    });
+    fabricRef.current!.backgroundColor = "#fff";
+    fabricRef.current!.renderAll();
     setLayers([]);
   };
 

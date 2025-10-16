@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTF, GLTFLoader } from "three-stdlib";
 import { OrbitControls } from "three-stdlib";
-import Sidebar3D from "./Sidebar3D"; // adjust path if necessary
+import { Sidebar3D } from "./Sidebar3D"; // adjust path if necessary
 import { uploadTextureFile, deleteTextureFile } from "@/lib/supabaseClient"; // ensure this exists
 
 type LoadedModel = {
